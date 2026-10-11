@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'sb_publishable_SYFoceRqs10r6DDfFjNPyA_R0TnYero';
-const SUPABASE_ANON_KEY = 'sb_publishable_SYFoceRqs10r6DDFjNPyA_RBTnYero';
+const SUPABASE_URL = 'https://supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_SYFoceRqs10r6DDfjNPyA_RBTnYero';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 const PLATFORM_PHONE = '9963088662';
 const VENDOR_UPI = '9963088662@ybl';
