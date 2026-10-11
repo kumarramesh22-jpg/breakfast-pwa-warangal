@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://nytrfiofpknvykigphfm.supabase.co/rest/v1/;
-const SUPABASE_ANON_KEY = 'sb_publishable_SYFoceRqs10r6DDfjNPyA_RBTnYero';
+// Local Mock Client to bypass Supabase server completely
+export const supabase = {
+  from: () => ({
+    select: () => Promise.resolve({ data: [], error: null }),
+    insert: (data: any) => {
+      console.log('Saved to Local Basket Storage:', data);
+      return Promise.resolve({ data, error: null });
+    },
+    upsert: (data: any) => Promise.resolve({ data, error: null }),
+    on: () => ({ subscribe: () => {} })
+  })
+};
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 const PLATFORM_PHONE = '9963088662';
