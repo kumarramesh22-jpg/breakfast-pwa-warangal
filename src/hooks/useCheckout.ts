@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // Hardcoded production credentials to completely bypass Vercel configuration panel issues
 const supabaseUrl = 'https://nytrfiofpknvykigphfm.supabase.co/rest/v1/';
 const supabaseAnonKey = 'sb_publishable_SYFoceRqs10r6DDfFjNPyA_R0TnYero';
-
+sb_publishable_SYFoceRqs10r6DDfFjNPyA_R0TnYero
 // Safely generate the live connection engine instance
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
