@@ -1,280 +1,212 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useCheckout } from './hooks/useCheckout';
+import OrderTracker from './OrderTracker';
 
-const SUPABASE_URL = 'https://supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_SYFoceRqs10r6DDfjNPyA_RBTnYero';
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-
-const PLATFORM_PHONE = '9963088662';
+// 1. GLOBAL ENVIRONMENT STRINGS
 const VENDOR_UPI = '9963088662@ybl';
 
+// 2. STATIC TIFFIN MASTER DIRECTORY
 const FOOD_MENU = [
-  {
-    id: 1,
-    name: 'Special Idli (2 Pcs)',
-    category: 'Tiffins',
-    price: 40,
-    isVeg: true,
-  },
-  { id: 2, name: 'Masala Dosa', category: 'Tiffins', price: 60, isVeg: true },
-  {
-    id: 3,
-    name: 'Full Veg Meals Thali',
-    category: 'Meals',
-    price: 120,
-    isVeg: true,
-  },
-  {
-    id: 4,
-    name: 'Hyderabadi Chicken Biryani',
-    category: 'Biryani',
-    price: 220,
-    isVeg: false,
-  },
-  {
-    id: 5,
-    name: 'Paneer Biryani XL',
-    category: 'Biryani',
-    price: 180,
-    isVeg: true,
-  },
-  {
-    id: 6,
-    name: 'Crispy Samosa (Plate)',
-    category: 'Snacks',
-    price: 30,
-    isVeg: true,
-  },
-  {
-    id: 7,
-    name: 'Chilled Soft Drink Cola',
-    category: 'Soft Drinks',
-    price: 40,
-    isVeg: true,
-  },
-  {
-    id: 8,
-    name: 'Premium Vanilla Scoop',
-    category: 'Ice Creams',
-    price: 50,
-    isVeg: true,
-  },
-  {
-    id: 9,
-    name: 'Sizzling Brownie Hot Fudge',
-    category: 'Ice Creams',
-    price: 150,
-    isVeg: true,
-  },
+  { id: 1, name: 'Special Idli (2 Pcs)', price: 40, category: 'Tiffins' },
+  { id: 2, name: 'Masala Dosa', price: 60, category: 'Tiffins' }
 ];
+
 export default function FoodPlatformApp() {
-  const [selectedCategory, setSelectedCategory] = useState('Tiffins');
-  const [cart, setCart] = useState<Record<number, number>>({});
-  const [checkoutAddress, setCheckoutAddress] = useState('');
-  const [isPaying, setIsPaying] = useState(false);
-  const [logMsg, setLogMsg] = useState(
-    'Cloud database linked. Awaiting shop actions...'
-  );
-  const [riderCoords, setRiderCoords] = useState({
-    lat: 17.9784,
-    lng: 79.5312,
-  });
+  // 3. REACT STATE LOGIC HOOKS
+  const [cart, setCart] = useState<{ [key: number]: number }>({});
+  const [checkoutAddress, setCheckoutAddress] = useState('Subedari, Hanamkonda, Warangal');
+  const [riderCoords, setRiderCoords] = useState({ lat: 17.97827, lng: 79.53191 });
+  const [logMsg, setLogMsg] = useState('Cloud database linked. Awaiting shop actions...');
+  const [activeOrder, setActiveOrder] = useState<{ id: string; total: number } | null>(null);
 
-  const addToCart = (id: number) => {
-    setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-  };
+  // 4. CUSTOM DATABASE UPI INTEGRATION HOOK
+  const { processCheckout, loading, error } = useCheckout();
 
-  const getCartTotal = () => {
-    return Object.entries(cart).reduce((sum, [id, qty]) => {
-      const item = FOOD_MENU.find((f) => f.id === Number(id));
-      return sum + (item ? item.price * qty : 0);
-    }, 0);
-  };
-
-  const totalBill = getCartTotal();
-  const vendorShare = (totalBill * 0.9).toFixed(2);
-  const platformShare = (totalBill * 0.1).toFixed(2);
-
-  const executePaymentCheckout = async () => {
-    if (totalBill === 0 || !checkoutAddress) return;
-    setIsPaying(true);
-    setLogMsg('Syncing order packet live to Supabase PostgreSQL schema...');
-
-    try {
-      const { error } = await supabase.from('orders').insert([
-        {
-          total_amount: totalBill,
-          delivery_address: checkoutAddress,
-          status: 'paid',
-        },
-      ]);
-
-      if (error) throw error;
-
-      setCart({});
-      setCheckoutAddress('');
-      setLogMsg(
-        `Verified: ₹${totalBill} landed on ${PLATFORM_PHONE}. Split settled -> Vendor (90%): ₹${vendorShare} | Platform (10%): ₹${platformShare}`
-      );
-    } catch (err: any) {
-      setLogMsg(
-        `Data sync exception error: ${
-          err.message || 'Check database permissions.'
-        }`
-      );
-    } finally {
-      setIsPaying(false);
-    }
-  };
-
+  // 5. LIVE MOCK COORDINATE POLLING PIPELINE
   useEffect(() => {
-    const loopId = setInterval(() => {
-      setRiderCoords((prev) => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.001,
-        lng: prev.lng + (Math.random() - 0.5) * 0.001,
+    const coordInterval = setInterval(() => {
+      setRiderCoords(prev => ({
+        lat: prev.lat + (Math.random() - 0.5) * 0.0001,
+        lng: prev.lng + (Math.random() - 0.5) * 0.0001
       }));
-    }, 3000);
-    return () => clearInterval(loopId);
+    }, 4000);
+    return () => clearInterval(coordInterval);
   }, []);
+
+  // 6. FINANCIAL TRANSACTION CALCULATIONS
+  const totalBill = Object.entries(cart).reduce((sum, [id, qty]) => {
+    const item = FOOD_MENU.find((f) => f.id === Number(id));
+    return sum + (item ? item.price * qty : 0);
+  }, 0);
+
+  const vendorShare = (totalBill * 0.90).toFixed(2);
+  const platformShare = (totalBill * 0.10).toFixed(2);
+
+  // 7. CART UTILITIES
+  const addToCart = (id: number) => {
+    setCart(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+    setLogMsg(`Updated item quantities in checkout matrix successfully.`);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
-      <header className="bg-slate-900 text-white p-4 shadow flex justify-between items-center">
+    <div className="min-h-screen bg-slate-50 font-sans pb-10">
+      {/* Dynamic Header Component */}
+      <header className="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm flex justify-between items-center max-w-md mx-auto">
         <div>
-          <h1 className="text-xl font-bold text-amber-400">
-            Breakfast Warangal PWA
-          </h1>
-          <p className="text-xs text-slate-400">
-            Linked to Supabase: nytrfiofpknvykigphfm
-          </p>
+          <h1 className="text-xl font-black text-slate-800 tracking-tight">Breakfast Warangal PWA</h1>
+          <p className="text-xs text-slate-400 font-medium">Linked to Supabase: nytrfiofpknyvkigphfm</p>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {[
-              'Tiffins',
-              'Meals',
-              'Biryani',
-              'Snacks',
-              'Soft Drinks',
-              'Ice Creams',
-            ].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold border ${
-                  selectedCategory === cat
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white text-slate-600'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {FOOD_MENU.filter((item) => item.category === selectedCategory).map(
-              (food) => (
-                <div
-                  key={food.id}
-                  className="bg-white p-4 rounded-xl shadow-sm border flex flex-col justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        food.isVeg ? 'bg-green-600' : 'bg-red-600'
-                      }`}
-                    ></span>
-                    <h3 className="font-bold text-slate-900">{food.name}</h3>
-                  </div>
-                  <div className="flex justify-between items-center mt-4 pt-2 border-t">
-                    <span className="font-extrabold text-slate-900">
-                      ₹{food.price}
-                    </span>
-                    <button
-                      onClick={() => addToCart(food.id)}
-                      className="bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs hover:bg-amber-400"
-                    >
-                      ADD +
-                    </button>
-                  </div>
-                </div>
-              )
-            )}
-          </div>
+      {/* Main Core Viewport Panel */}
+      <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
+        {/* Navigation Filter Badges */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          {['Tiffins', 'Meals', 'Biryani', 'Snacks', 'Soft Drinks', 'Ice Creams'].map((cat, idx) => (
+            <span key={cat} className={`px-3 py-1.5 rounded-full font-semibold border whitespace-nowrap cursor-pointer transition ${idx === 0 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+              {cat}
+            </span>
+          ))}
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border h-fit space-y-4">
-          <h2 className="text-lg font-black text-slate-900">Your Basket</h2>
-          {totalBill === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">
-              Your delivery basket is empty.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <div className="pt-2 space-y-3">
-                <div className="flex justify-between font-bold text-slate-900">
-                  <span>Total Amount Due:</span>
-                  <span className="text-amber-600">₹{totalBill}</span>
-                </div>
+        {/* Hot Menu Showcase List Grid */}
+        <div className="space-y-3">
+          {FOOD_MENU.map((item) => (
+            <div key={item.id} className="bg-white p-4 rounded-2xl border shadow-sm flex justify-between items-center transition hover:shadow-md">
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">{item.name}</h3>
+                <p className="text-sm font-semibold text-emerald-600 mt-0.5">₹{item.price}</p>
+              </div>
+              <button onClick={() => addToCart(item.id)} className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2 text-xs rounded-xl transition active:scale-95 border flex items-center gap-1">
+                ADD <span className="text-slate-400">+</span>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Core Live Shopping Basket Integration Card */}
+        <div className="bg-white p-4 rounded-2xl border shadow-sm">
+          <h2 className="text-lg font-black text-slate-800 border-b pb-2 tracking-tight">Your Basket</h2>
+          
+          {Object.keys(cart).length > 0 ? (
+            <div className="mt-3 space-y-3">
+              {/* Dynamic Summary Breakdown list */}
+              <div className="space-y-2">
+                {Object.entries(cart).map(([id, qty]) => {
+                  const item = FOOD_MENU.find((f) => f.id === Number(id));
+                  if (!item || qty <= 0) return null;
+                  return (
+                    <div key={id} className="flex justify-between text-sm font-medium text-slate-600">
+                      <span>{item.name} × {qty}</span>
+                      <span className="text-slate-800">₹{(item.price * qty).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Delivery Node Address Input Box */}
+              <div className="pt-2 border-t">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  📍 Delivery Destination
+                </label>
                 <input
                   type="text"
-                  placeholder="Enter Delivery Address Details"
                   value={checkoutAddress}
                   onChange={(e) => setCheckoutAddress(e.target.value)}
-                  className="w-full text-sm border p-2 rounded-lg focus:ring-1 focus:ring-slate-900 focus:outline-none"
+                  placeholder="Type dispatch coordinate street info..."
+                  className="w-full text-xs p-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition font-medium"
                 />
-
-                <div className="bg-slate-900 text-white p-3 rounded-xl text-center text-xs space-y-2">
-                  <p className="text-amber-400 font-bold">
-                    📱 SCAN ACTIVE UPI QR
-                  </p>
-                  <p className="font-mono text-[10px] bg-slate-950 p-2 rounded break-all select-all text-slate-300">
-                    {`upi://pay?pa=${VENDOR_UPI}&pn=BreakfastWarangal&am=${totalBill}`}
-                  </p>
-                </div>
-
-                <button
-                  onClick={executePaymentCheckout}
-                  disabled={isPaying || !checkoutAddress}
-                  className="w-full bg-slate-950 text-white font-bold py-2.5 rounded-xl disabled:bg-slate-200 text-sm"
-                >
-                  {isPaying
-                    ? 'Verifying 90/10 Splits...'
-                    : `🔒 Pay ₹${totalBill} Directly`}
-                </button>
               </div>
+
+              {/* Live Telemetry Moving Rider Node Coordinates Display */}
+              <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1 font-semibold text-slate-600 border border-slate-100">
+                <div className="flex items-center gap-1 text-slate-700">
+                  <span className="animate-ping w-1.5 h-1.5 rounded-full bg-red-500 inline-block mr-1"></span>
+                  Live Moving Rider Coordinates:
+                </div>
+                <div className="pl-3.5 text-slate-500 font-mono text-[11px] space-y-0.5">
+                  <div>Latitude: {riderCoords.lat.toFixed(5)}</div>
+                  <div>Longitude: {riderCoords.lng.toFixed(5)}</div>
+                </div>
+              </div>
+
+              {/* Expected Operational Settlement Splits Calculation Showcase */}
+              <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1 font-semibold text-slate-600 border border-slate-100">
+                <div className="text-slate-700">📊 Expected Settlement Ratios Split:</div>
+                <div className="pl-3.5 space-y-0.5 text-slate-500">
+                  <div className="flex justify-between">
+                    <span>Restaurant Share (90%):</span>
+                    <span className="text-slate-700 font-bold">₹{vendorShare}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>App Profit Cut (10%):</span>
+                    <span className="text-slate-700 font-bold">₹{platformShare}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Zero-Fee Production Ready UPI Executive Button */}
+              <button
+                onClick={async () => {
+                  const itemsArray = Object.entries(cart)
+                    .map(([id, qty]) => {
+                      const item = FOOD_MENU.find((f) => f.id === Number(id));
+                      return { id, name: item?.name || 'Item', price: item?.price || 0, quantity: qty };
+                    })
+                    .filter(item => item.quantity > 0);
+
+                  const res = await processCheckout({
+                    cartItems: itemsArray,
+                    totalAmount: totalBill,
+                    restaurantId: 'warangal-central-001',
+                    vendorUpiId: VENDOR_UPI,
+                    vendorName: 'Breakfast Warangal'
+                  });
+
+                  if (res && res.success) {
+                    setActiveOrder({ id: res.orderId, total: totalBill });
+                    setLogMsg(`Order logged securely. Active delivery pipeline running.`);
+                  }
+                }}
+                disabled={loading || !checkoutAddress}
+                className={`w-full text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-200 mt-2 tracking-wide text-sm ${
+                  loading || !checkoutAddress
+                    ? 'bg-slate-300 cursor-not-allowed shadow-none'
+                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100'
+                }`}
+              >
+                {loading ? '🚀 Connecting UPI Apps...' : `Pay ₹${totalBill} via UPI`}
+              </button>
+
+              {/* Live Real-time Database Error Exception Message Banner */}
+              {error && (
+                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs rounded-xl font-medium text-center">
+                  ⚠️ Database Sync Error: {error}
+                </div>
+              )}
             </div>
+          ) : (
+            <p className="text-xs text-slate-400 font-medium py-6 text-center italic">Your delivery basket is empty. Add hot fresh tiffins above to start!</p>
           )}
         </div>
+
+        {/* Live Active Delivery Tracker Interface Component Module */}
+        {activeOrder && (
+          <OrderTracker 
+            orderId={activeOrder.id} 
+            totalAmount={activeOrder.total} 
+            riderCoords={riderCoords} 
+          />
+        )}
       </main>
 
-      <div className="bg-white p-4 border-t max-w-7xl w-full mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-        <div className="bg-slate-50 p-3 rounded-lg border">
-          <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">
-            📍 Live Moving Rider Coordinates
-          </p>
-          <p>Latitude: {riderCoords.lat.toFixed(5)}</p>
-          <p>Longitude: {riderCoords.lng.toFixed(5)}</p>
-        </div>
-        <div className="bg-slate-50 p-3 rounded-lg border">
-          <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">
-            📊 Expected Settlement Ratios Split
-          </p>
-          <p>Restaurant Share (90%): ₹{vendorShare}</p>
-          <p>App Profit Cut (10%): ₹{platformShare}</p>
-        </div>
-      </div>
-
-      <footer className="bg-slate-950 text-slate-400 p-4 font-mono text-xs border-t border-slate-800">
-        <p className="text-slate-500 font-bold uppercase text-[9px] mb-1">
-          📟 Live Sync Status Console:
+      {/* Persistent Operations System Debug Console Log Footer */}
+      <footer className="bg-slate-900 text-slate-400 p-4 mt-8 max-w-md mx-auto rounded-t-2xl border-t border-slate-800 text-[11px] font-mono shadow-xl">
+        <div className="text-slate-500 uppercase text-[9px] font-bold tracking-wider mb-1">💻 Live Sync Status Console:</div>
+        <p className="text-emerald-400 font-semibold flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+          {logMsg}
         </p>
-        <p className="text-emerald-400">{logMsg}</p>
       </footer>
     </div>
   );
