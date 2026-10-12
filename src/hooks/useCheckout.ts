@@ -9,6 +9,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SU
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY && import.meta.env.VITE_SUPABASE_ANON_KEY !== 'your_actual_supabase_anon_key_here'
   ? import.meta.env.VITE_SUPABASE_ANON_KEY 
   : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dHJmaW9mcGdueXZraWdwaGZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwMDAwMDAsImV4cCI6MjA1NTYwMDAwMH0.placeholder-fallback';
+  const cleanUrl = supabaseUrl.trim().replace(/\/$/, "");
 
 // Safely generate the connection instance without throwing fatal layout crashes
 const cleanUrl = supabaseUrl.trim().replace(/\/\$/, "");
