@@ -1,213 +1,227 @@
 import React, { useState, useEffect } from 'react';
-import { useCheckout } from './hooks/useCheckout';
-import OrderTracker from './OrderTracker';
+import { supabase } from './supabaseClient';
 
-// 1. GLOBAL ENVIRONMENT STRINGS
-const VENDOR_UPI = '9963088662@ybl';
+// SUB-COMPONENT: CUSTOMER FOOD MARKETPLACE COMPONENT MODULE
+function CustomerDashboard({ restaurants, dishes, searchQuery, setSearchQuery, selectedArea, setSelectedArea, selectedVendorId, setSelectedRestaurantId, addToCart, cart, deliveryAddress, setDeliveryAddress, placeOrder }: any) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
+      <div>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+          <input type="text" placeholder="Search menu..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
+          <select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}>
+            <option value="All">All Regions</option>
+            <option value="Hanamkonda Center">Hanamkonda Center</option>
+            <option value="Kazipet Node">Kazipet Node</option>
+            <option value="Warangal Chowrasta">Warangal Chowrasta</option>
+          </select>
+        </div>
 
-// 2. STATIC TIFFIN MASTER DIRECTORY
-const FOOD_MENU = [
-  { id: 1, name: 'Special Idli (2 Pcs)', price: 40, category: 'Tiffins' },
-  { id: 2, name: 'Masala Dosa', price: 60, category: 'Tiffins' }
-];
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          {(restaurants || []).filter((r: any) => (selectedArea === 'All' || r.area === selectedArea) && r.name.toLowerCase().includes(searchQuery.toLowerCase())).map((r: any) => (
+            <div key={r.id} onClick={() => setSelectedRestaurantId(selectedVendorId === r.id ? 'All' : r.id)} style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '12px', cursor: 'pointer', background: selectedVendorId === r.id ? '#ffedd5' : '#ffffff', borderColor: selectedVendorId === r.id ? '#fc8019' : '#e5e7eb' }}>
+              <h4 style={{ margin: '0 0 4px 0' }}>{r.name}</h4>
+              <small>⭐ {r.rating} • {r.area}</small>
+            </div>
+          ))}
+        </div>
 
-export default function FoodPlatformApp() {
-  // 3. REACT STATE LOGIC HOOKS
-  const [cart, setCart] = useState<{ [key: number]: number }>({});
-  const [checkoutAddress, setCheckoutAddress] = useState('Subedari, Hanamkonda, Warangal');
-  const [riderCoords, setRiderCoords] = useState({ lat: 17.97827, lng: 79.53191 });
-  const [logMsg, setLogMsg] = useState('Cloud database linked. Awaiting shop actions...');
-  const [activeOrder, setActiveOrder] = useState<{ id: string; total: number } | null>(null);
+        <div style={{ background: '#ffffff', borderRadius: '12px', padding: '16px', border: '1px solid #e5e7eb' }}>
+          <h3 style={{ marginTop: 0 }}>Menu Items</h3>
+          {(dishes || []).filter((d: any) => selectedVendorId === 'All' || d.restaurant_id === selectedVendorId).map((d: any) => (
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f3f4f6' }}>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: d.isVeg ? 'green' : 'red' }}>{d.isVeg ? '🟢 VEG' : '🔴 NON-VEG'}</span>
+                <h4 style={{ margin: '4px 0' }}>{d.name} — ₹{d.price}</h4>
+              </div>
+              <button onClick={() => addToCart(d)} style={{ background: '#fc8019', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>ADD +</button>
+            </div>
+          ))}
+        </div>
+      </div>
 
-  // 4. CUSTOM DATABASE UPI INTEGRATION HOOK
-  const { processCheckout, loading, error } = useCheckout();
+      <div style={{ border: '1px solid #e5e7eb', padding: '20px', borderRadius: '12px', height: 'fit-content', background: '#ffffff' }}>
+        <h3 style={{ marginTop: 0 }}>🛒 Basket</h3>
+        {(cart || []).map((i: any) => (
+          <div key={i.dish.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+            <span>{i.dish.name} (x{i.quantity})</span>
+            <strong>₹{i.dish.price * i.quantity}</strong>
+          </div>
+        ))}
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px', marginTop: '12px' }}>
+          <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#4b5563' }}>📍 Delivery Address:</label>
+          <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '6px', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '900', fontSize: '16px', marginTop: '16px', color: '#fc8019' }}>
+            <span>Total To Pay:</span><span>₹{(cart || []).reduce((s: number, i: any) => s + (i.dish.price * i.quantity), 0)}</span>
+          </div>
+          <button onClick={placeOrder} style={{ width: '100%', backgroundColor: '#fc8019', color: '#fff', padding: '12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', marginTop: '12px' }}>Place Order</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  // 5. LIVE MOCK COORDINATE POLLING PIPELINE
+// MAIN LAYOUT APP MANAGEMENT ROOT TERMINAL
+export default function App() {
+  const [currentView, setCurrentView] = useState<'customer' | 'admin' | 'rider'>('customer');
+  const [restaurants, setRestaurants] = useState<any>([]);
+  const [dishes, setDishes] = useState<any>([]);
+  const [cart, setCart] = useState<any>([]);
+  const [liveOrders, setLiveOrders] = useState<any>([]);
+  
+  const [selectedArea, setSelectedArea] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedVendorId, setSelectedRestaurantId] = useState('All');
+  const [deliveryAddress, setDeliveryAddress] = useState('Subedari, Hanamkonda, Warangal');
+  const [riderCoords, setRiderCoords] = useState({ lat: 17.97834, lng: 79.53189 });
+
+  const [newOutletName, setNewOutletName] = useState('');
+  const [newOutletArea, setNewOutletArea] = useState('Hanamkonda Center');
+  const [newOutletType, setNewOutletType] = useState('Premium Restaurant');
+  const [newOutletRating, setNewOutletRating] = useState('4.5');
+
   useEffect(() => {
-    const coordInterval = setInterval(() => {
-      setRiderCoords(prev => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.0001,
-        lng: prev.lng + (Math.random() - 0.5) * 0.0001
-      }));
-    }, 4000);
-    return () => clearInterval(coordInterval);
-  }, []);
+    loadFallbackData();
+    async function loadData() {
+      try {
+        const { data: r } = await supabase.from('restaurants').select('*');
+        const { data: d } = await supabase.from('dishes').select('*');
+        if (r?.length) setRestaurants(r);
+        if (d?.length) setDishes(d);
+        const { data: o } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (o) setLiveOrders(o);
+      } catch (err) {
+        console.log("Offline pipeline baseline synchronization active.");
+      }
+    }
+    loadData();
+  }, [currentView]);
 
-  // 6. FINANCIAL TRANSACTION CALCULATIONS
-  const totalBill = Object.entries(cart).reduce((sum, [id, qty]) => {
-    const item = FOOD_MENU.find((f) => f.id === Number(id));
-    return sum + (item ? item.price * qty : 0);
-  }, 0);
-
-  const vendorShare = (totalBill * 0.90).toFixed(2);
-  const platformShare = (totalBill * 0.10).toFixed(2);
-
-  // 7. CART UTILITIES
-  const addToCart = (id: number) => {
-    setCart(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-    setLogMsg(`Updated item quantities in checkout matrix successfully.`);
+  const loadFallbackData = () => {
+    setRestaurants([
+      { id: 'r1', name: 'Hanamkonda Central Tiffins', area: 'Hanamkonda Center', rating: 4.6 },
+      { id: 'r2', name: 'Warangal Royal Biryani', area: 'Warangal Chowrasta', rating: 4.4 }
+    ]);
+    setDishes([
+      { id: 'd1', restaurant_id: 'r1', name: 'Ghee Karam Idli', price: 50, description: 'Soft gunpowder idlis.', isVeg: true },
+      { id: 'd2', restaurant_id: 'r1', name: 'Butter Onion Dosa', price: 80, description: 'Crispy onion dosa crepes.', isVeg: true }
+    ]);
   };
 
+  const addToCart = (dish: any) => {
+    const existing = cart.find((i: any) => i.dish.id === dish.id);
+    if (existing) {
+      setCart(cart.map((i: any) => i.dish.id === dish.id ? { ...i, quantity: i.quantity + 1 } : i));
+    } else {
+      setCart([...cart, { dish, quantity: 1 }]);
+    }
+  };
+
+  const placeOrder = async () => {
+    if (!cart.length) return alert('Basket empty!');
+    const newOrder = {
+      total_amount: cart.reduce((s: number, i: any) => s + i.dish.price * i.quantity, 0),
+      status: 'Pending',
+      delivery_address: deliveryAddress,
+      items_summary: cart.map((i: any) => `${i.dish.name} x${i.quantity}`).join(', ')
+    };
+    try {
+      await supabase.from('orders').insert([newOrder]);
+      alert('🎉 Order Placed Natively!');
+      setCart([]);
+    } catch {
+      setLiveOrders([newOrder, ...(liveOrders || [])]);
+      alert('🎉 Simulation Mode Active! Order sent across channels.');
+      setCart([]);
+    }
+  };
+
+  const handleOnboardOutlet = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOutletName.trim()) return alert('Please input brand name.');
+    const newRes = { id: 'r-' + Date.now(), name: newOutletName, area: newOutletArea, type: newOutletType, rating: parseFloat(newOutletRating) || 4.5 };
+    setRestaurants([newRes, ...restaurants]);
+    setNewOutletName('');
+    alert(`🎉 Approved Merchant: "${newRes.name}"`);
+  };
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-10">
-      {/* Dynamic Header Component */}
-      <header className="bg-white border-b sticky top-0 z-50 px-4 py-3 shadow-sm flex justify-between items-center max-w-md mx-auto">
-        <div>
-          <h1 className="text-xl font-black text-slate-800 tracking-tight">Breakfast Warangal PWA</h1>
-          <p className="text-xs text-slate-400 font-medium">Linked to Supabase: nytrfiofpknyvkigphfm</p>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'sans-serif', color: '#282c3f', backgroundColor: '#f3f4f6', margin: 0 }}>
+      
+      {/* NAVBAR */}
+      <header style={{ borderBottom: '1px solid #e5e7eb', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 100 }}>
+        <h2 style={{ margin: 0, color: '#fc8019', fontWeight: 900 }}>🥞 Swiggy Warangal Hub</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setCurrentView('customer')} style={{ padding: '8px 12px', cursor: 'pointer', border: '1px solid #fc8019', borderRadius: '6px', background: currentView === 'customer' ? '#fc8019' : '#fff', color: currentView === 'customer' ? '#fff' : '#fc8019', fontWeight: 'bold' }}>🍟 Order Online</button>
+          <button onClick={() => setCurrentView('admin')} style={{ padding: '8px 12px', cursor: 'pointer', border: '1px solid #fc8019', borderRadius: '6px', background: currentView === 'admin' ? '#fc8019' : '#fff', color: currentView === 'admin' ? '#fff' : '#fc8019', fontWeight: 'bold' }}>🍳 Admin Panel</button>
+          <button onClick={() => setCurrentView('rider')} style={{ padding: '8px 12px', cursor: 'pointer', border: '1px solid #fc8019', borderRadius: '6px', background: currentView === 'rider' ? '#fc8019' : '#fff', color: currentView === 'rider' ? '#fff' : '#fc8019', fontWeight: 'bold' }}>🚴 Rider View</button>
         </div>
       </header>
 
-      {/* Main Core Viewport Panel */}
-      <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
-        {/* Navigation Filter Badges */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-          {['Tiffins', 'Meals', 'Biryani', 'Snacks', 'Soft Drinks', 'Ice Creams'].map((cat, idx) => (
-            <span key={cat} className={`px-3 py-1.5 rounded-full font-semibold border whitespace-nowrap cursor-pointer transition ${idx === 0 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-              {cat}
-            </span>
-          ))}
-        </div>
+      {/* VIEWPORT CONTROLLER SWITCH */}
+      <main style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '20px auto', padding: '0 20px', boxSizing: 'border-box' }}>
+        {currentView === 'customer' && (
+          <CustomerDashboard restaurants={restaurants} dishes={dishes} searchQuery={searchQuery} setSearchQuery={setSearchQuery} selectedArea={selectedArea} setSelectedArea={setSelectedArea} selectedVendorId={selectedVendorId} setSelectedRestaurantId={setSelectedRestaurantId} addToCart={addToCart} cart={cart} deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress} placeOrder={placeOrder} />
+        )}
 
-        {/* Hot Menu Showcase List Grid */}
-        <div className="space-y-3">
-          {FOOD_MENU.map((item) => (
-            <div key={item.id} className="bg-white p-4 rounded-2xl border shadow-sm flex justify-between items-center transition hover:shadow-md">
-              <div>
-                <h3 className="font-bold text-slate-800 text-base">{item.name}</h3>
-                <p className="text-sm font-semibold text-emerald-600 mt-0.5">₹{item.price}</p>
-              </div>
-              <button onClick={() => addToCart(item.id)} className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2 text-xs rounded-xl transition active:scale-95 border flex items-center gap-1">
-                ADD <span className="text-slate-400">+</span>
-              </button>
+        {currentView === 'admin' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #e5e7eb', padding: '20px', borderRadius: '16px', height: 'fit-content' }}>
+              <h3 style={{ marginTop: 0, color: '#fc8019', fontSize: '18px', fontWeight: 'bold' }}>🏢 Onboard Partner</h3>
+              <form onSubmit={handleOnboardOutlet} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Outlet Brand Name:</label>
+                <input type="text" placeholder="e.g. Subedari Spice Cloud" value={newOutletName} onChange={(e) => setNewOutletName(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Geographic Region Sector:</label>
+                <select value={newOutletArea} onChange={(e) => setNewOutletArea(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                  <option value="Hanamkonda Center">Hanamkonda Center</option>
+                  <option value="Kazipet Node">Kazipet Node</option>
+                  <option value="Warangal Chowrasta">Warangal Chowrasta</option>
+                </select>
+                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Kitchen Classification:</label>
+                <select value={newOutletType} onChange={(e) => setNewOutletType(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                  <option value="Premium Restaurant">Premium Restaurant</option>
+                  <option value="Cloud Kitchen">Cloud Kitchen</option>
+                  <option value="Street Food Corner">Street Food Corner</option>
+                </select>
+                <button type="submit" style={{ backgroundColor: '#fc8019', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>✅ Register Partner</button>
+              </form>
             </div>
-          ))}
-        </div>
 
-        {/* Core Live Shopping Basket Integration Card */}
-        <div className="bg-white p-4 rounded-2xl border shadow-sm">
-          <h2 className="text-lg font-black text-slate-800 border-b pb-2 tracking-tight">Your Basket</h2>
-          
-          {Object.keys(cart).length > 0 ? (
-            <div className="mt-3 space-y-3">
-              {/* Dynamic Summary Breakdown list */}
-              <div className="space-y-2">
-                {Object.entries(cart).map(([id, qty]) => {
-                  const item = FOOD_MENU.find((f) => f.id === Number(id));
-                  if (!item || qty <= 0) return null;
-                  return (
-                    <div key={id} className="flex justify-between text-sm font-medium text-slate-600">
-                      <span>{item.name} × {qty}</span>
-                      <span className="text-slate-800">₹{(item.price * qty).toFixed(2)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Delivery Node Address Input Box */}
-              <div className="pt-2 border-t">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  📍 Delivery Destination
-                </label>
-                <input
-                  type="text"
-                  value={checkoutAddress}
-                  onChange={(e) => setCheckoutAddress(e.target.value)}
-                  placeholder="Type dispatch coordinate street info..."
-                  className="w-full text-xs p-2.5 bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition font-medium"
-                />
-              </div>
-
-              {/* Live Telemetry Moving Rider Node Coordinates Display */}
-              <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1 font-semibold text-slate-600 border border-slate-100">
-                <div className="flex items-center gap-1 text-slate-700">
-                  <span className="animate-ping w-1.5 h-1.5 rounded-full bg-red-500 inline-block mr-1"></span>
-                  Live Moving Rider Coordinates:
-                </div>
-                <div className="pl-3.5 text-slate-500 font-mono text-[11px] space-y-0.5">
-                  <div>Latitude: {riderCoords.lat.toFixed(5)}</div>
-                  <div>Longitude: {riderCoords.lng.toFixed(5)}</div>
-                </div>
-              </div>
-
-              {/* Expected Operational Settlement Splits Calculation Showcase */}
-              <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1 font-semibold text-slate-600 border border-slate-100">
-                <div className="text-slate-700">📊 Expected Settlement Ratios Split:</div>
-                <div className="pl-3.5 space-y-0.5 text-slate-500">
-                  <div className="flex justify-between">
-                    <span>Restaurant Share (90%):</span>
-                    <span className="text-slate-700 font-bold">₹{vendorShare}</span>
+            <div style={{ border: '1px solid #e5e7eb', padding: '24px', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+              <h3 style={{ marginTop: 0 }}>🍳 Multi-Vendor Admin Live Feed</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                {(liveOrders || []).map((o: any, idx: number) => (
+                  <div key={idx} style={{ padding: '12px', border: '1px solid #eee', borderRadius: '8px' }}>
+                    <p style={{ margin: 0 }}><strong>Items Summary:</strong> {o.items_summary}</p>
+                    <small style={{ color: '#6b7280' }}>Bill: ₹{o.total_amount} | Destination: {o.delivery_address}</small>
                   </div>
-                  <div className="flex justify-between">
-                    <span>App Profit Cut (10%):</span>
-                    <span className="text-slate-700 font-bold">₹{platformShare}</span>
-                  </div>
-                </div>
+                ))}
+                {!(liveOrders || []).length && <p style={{ color: '#7e808c', textAlign: 'center', padding: '20px 0' }}>No active layout rows found inside database fields.</p>}
               </div>
-
-              {/* Zero-Fee Production Ready UPI Executive Button */}
-              <button
-                onClick={async () => {
-                  const itemsArray = Object.entries(cart)
-                    .map(([id, qty]) => {
-                      const item = FOOD_MENU.find((f) => f.id === Number(id));
-                      return { id, name: item?.name || 'Item', price: item?.price || 0, quantity: qty };
-                    })
-                    .filter(item => item.quantity > 0);
-
-                  const res = await processCheckout({
-                    cartItems: itemsArray,
-                    totalAmount: totalBill,
-                    restaurantId: 'warangal-central-001',
-                    vendorUpiId: VENDOR_UPI,
-                    vendorName: 'Breakfast Warangal'
-                  });
-
-                  if (res && res.success) {
-                    setActiveOrder({ id: res.orderId, total: totalBill });
-                    setLogMsg(`Order logged securely. Active delivery pipeline running.`);
-                  }
-                }}
-                disabled={loading || !checkoutAddress}
-                className={`w-full text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-200 mt-2 tracking-wide text-sm ${
-                  loading || !checkoutAddress
-                    ? 'bg-slate-300 cursor-not-allowed shadow-none'
-                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100'
-                }`}
-              >
-                {loading ? '🚀 Connecting UPI Apps...' : `Pay ₹${totalBill} via UPI`}
-              </button>
-
-              {/* Live Real-time Database Error Exception Message Banner */}
-              {error && (
-                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs rounded-xl font-medium text-center">
-                  ⚠️ Database Sync Error: {error}
-                </div>
-              )}
             </div>
-          ) : (
-            <p className="text-xs text-slate-400 font-medium py-6 text-center italic">Your delivery basket is empty. Add hot fresh tiffins above to start!</p>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Live Active Delivery Tracker Interface Component Module */}
-        {activeOrder && (
-          <OrderTracker 
-            orderId={activeOrder.id} 
-            totalAmount={activeOrder.total} 
-            riderCoords={riderCoords} 
-          />
+        {currentView === 'rider' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ border: '1px solid #e5e7eb', padding: '20px', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+              <h3 style={{ marginTop: 0 }}>🚴 Active Shipment Runs</h3>
+              {(liveOrders || []).map((o: any, idx: number) => (
+                <div key={idx} style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
+                  <p style={{ margin: 0, fontWeight: 'bold' }}>Summary: {o.items_summary}</p>
+                  <small style={{ color: '#6b7280' }}>Destination Target Address: {o.delivery_address}</small>
+                </div>
+              ))}
+              {!(liveOrders || []).length && <p style={{ color: '#7e808c', textAlign: 'center', padding: '20px 0' }}>No courier active delivery paths mapped.</p>}
+            </div>
+            <div style={{ border: '1px solid #e5e7eb', padding: '20px', borderRadius: '12px', background: '#ffffff', textAlign: 'center' }}>
+              <h3 style={{ marginTop: 0, textAlign: 'left' }}>🗺️ Telemetry Tracking Hub</h3>
+              <div style={{ padding: '24px', background: '#f9f9fa', borderRadius: '12px', border: '1px dashed #dbdbe1', margin: '16px 0' }}>
+                <strong>Lat: {riderCoords.lat} | Lng: {riderCoords.lng}</strong>
+              </div>
+              <button onClick={() => setRiderCoords({ lat: +(17.978 + Math.random()*0.01).toFixed(5), lng: +(79.531 + Math.random()*0.01).toFixed(5) })} style={{ width: '100%', padding: '12px', background: '#fff', border: '1px solid #dbdbe1', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#4b5563' }}>🎲 Randomize GPS Telemetry</button>
+            </div>
+          </div>
         )}
       </main>
-
-      {/* Persistent Operations System Debug Console Log Footer */}
-      <footer className="bg-slate-900 text-slate-400 p-4 mt-8 max-w-md mx-auto rounded-t-2xl border-t border-slate-800 text-[11px] font-mono shadow-xl">
-        <div className="text-slate-500 uppercase text-[9px] font-bold tracking-wider mb-1">💻 Live Sync Status Console:</div>
-        <p className="text-emerald-400 font-semibold flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-          {logMsg}
-        </p>
-      </footer>
     </div>
   );
 }
