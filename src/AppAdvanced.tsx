@@ -1,3 +1,6 @@
+import { PremiumRidersDashboard } from './PremiumRidersDashboard';
+
+
 import React, { useState } from 'react';
 
 // 📦 SELF-CONTAINED LOCAL DISPATCH LOGISTICS HUB MODULE
@@ -235,6 +238,20 @@ export default function App() {
           </div>
         </div>
       )}
+          <ColorfulRiderEngine />
+
     </div>
   );
 }
+
+// ==========================================
+// CLEAN UNIQUE RENDERING ENGINE
+// ==========================================
+export function ColorfulRiderEngine() {
+  return (
+    <div style={{ padding: '0 10px', marginTop: '20px' }}>
+      <PremiumRidersDashboard />
+    </div>
+  );
+}
+
