@@ -15,6 +15,7 @@ function InternalOrderTracker({ localOrders }: { localOrders: any[] }) {
       return { ...order, legs: updatedLegs, overallStatus: allPickedUp ? 'Out for Delivery' : 'Processing' };
     }));
   };
+ 
 
   return (
     <div className="bg-white rounded-2xl border border-orange-100 p-6 shadow-xl max-w-xl mx-auto my-6 font-sans text-gray-900">
@@ -255,3 +256,75 @@ export function ColorfulRiderEngine() {
   );
 }
 
+// At the bottom of src/AppAdvanced.tsx, update your code to include the directory:
+// ==========================================
+// CLEAN UNIQUE RENDERING ENGINE FLOOR
+// ==========================================
+// export function ColorfulRiderEngine() {
+  // return (
+    // <div style={{ padding: '0 10px', marginTop: '20px' }}>
+      // <LocalityDirectory />
+      // <PremiumRidersDashboard />
+    // </div>
+  // );
+// }
+
+
+// ==========================================================
+// 100% RISK-FREE INLINE DYNAMIC RENDERING INTERCEPT FLOOR
+// ==========================================================
+import  { lazy, Suspense } from 'react';
+
+// Dynamically fetches your new Tricity directory out-of-line
+const LiveOnboardingHub = lazy(() => import('./RegionalOnboarding').then(module => ({ default: module.LocalityDirectory })));
+
+export function OnboardingRegistryEngine() {
+
+  return (
+    <div style={{ padding: '0 10px', marginTop: '20px' }}>
+      <Suspense fallback={<div style={{ color: '#FF6B00', fontWeight: 'bold' }}>Loading Tricity Merchants Hub...</div>}>
+        <LiveOnboardingHub />
+      </Suspense>
+      <PremiumRidersDashboard />
+    </div>
+  );
+}
+// ==========================================================
+// INDEPENDENT EXTENSION BLOCK AT THE ABSOLUTE BOTTOM LINES
+// ==========================================================
+export function AppLogisticsExtension() {
+  return (
+    <div style={{ padding: '0 10px', marginTop: '20px' }}>
+      <OnboardingRegistryEngine />
+    </div>
+  );
+}
+// ==========================================================
+// 100% RISK-FREE INLINE DYNAMIC RENDERING INTERCEPT FLOOR
+// ==========================================================
+// ==========================================================
+// 100% RISK-FREE INLINE DYNAMIC RENDERING INTERCEPT FLOOR
+// ==========================================================
+const UniqueOnboardingHub = lazy(() => import('./RegionalOnboarding').then(module => ({ default: module.LocalityDirectory })));
+
+export function OnboardingRegistryHub() {
+
+  return (
+    <div style={{ padding: '0 10px', marginTop: '20px' }}>
+      <Suspense fallback={<div style={{ color: '#FF6B00', fontWeight: 'bold' }}>Loading Tricity Merchants Hub...</div>}>
+        <UniqueOnboardingHub />
+      </Suspense>
+      <PremiumRidersDashboard />
+    </div>
+  );
+}
+
+export function AppLogisticsHubExtension() {
+
+  return (
+    <div style={{ padding: '0 10px', marginTop: '20px' }}>
+         <OnboardingRegistryHub />
+
+    </div>
+  );
+}
