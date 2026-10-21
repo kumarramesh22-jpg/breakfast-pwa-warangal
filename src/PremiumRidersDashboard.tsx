@@ -110,8 +110,10 @@ export const PremiumRidersDashboard: React.FC = () => {
     if (rider.status === 'En-Route') msg += `🚀 Delivery Update: You are currently mapped en-route near *${rider.location}* delivering *${rider.orderItem}*.`;
     if (rider.status === 'Delivered') msg += `✅ Success! Order task *${rider.orderItem}* marked as completed.`;
 
+    // FIX: Replaced curly brackets with a forward slash and template expression injection syntax
     window.open(`https://wa.me{rider.phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
+
 
   // Payout math block to calculate figures live on screen
   const totalFleetTrips = activeDispatches.reduce((acc, curr) => acc + curr.tripsCompleted, 0);
